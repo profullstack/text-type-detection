@@ -6,9 +6,9 @@ const GEOM_RE = /[\u25A0-\u25FF]/;
 const ANSI_RE = /\x1B\[[0-9;]*m/;
 
 // Character sets for ASCII art detection
-const BORDER_CHARS = new Set(Array.from("+|-_=/#\\*<>"));
+const BORDER_CHARS = new Set(Array.from('+|-_=/#\\*<>'));
 const LINE_SYMBOL_CHARS = new Set(
-  Array.from("`~!@#$%^&*()-_=+[]{}|\\;:'\",.<>/?")
+  Array.from('`~!@#$%^&*()-_=+[]{}|\\;:\'",.<>/?')
 );
 
 /** Heuristic markdown patterns */
@@ -34,11 +34,11 @@ const MD = {
  * @returns {Object} Score and reasons for the score
  */
 function asciiArtScore(text) {
-  const raw = text.replace(/\r\n?/g, "\n");
-  const lines = raw.split("\n");
+  const raw = text.replace(/\r\n?/g, '\n');
+  const lines = raw.split('\n');
 
   if (lines.length < 3) {
-    return { score: 0, reasons: ["too_few_lines"] };
+    return { score: 0, reasons: ['too_few_lines'] };
   }
 
   const lengths = lines.map((l) => l.length);
@@ -68,10 +68,9 @@ function asciiArtScore(text) {
 
     const t = line.trim();
     if (t.length >= 3) {
-      const allSame = t.split("").every((c) => c === t[0]);
+      const allSame = t.split('').every((c) => c === t[0]);
       const mostlyBorder =
-        t.split("").filter((c) => BORDER_CHARS.has(c)).length / t.length >=
-        0.8;
+        t.split('').filter((c) => BORDER_CHARS.has(c)).length / t.length >= 0.8;
 
       if (
         BORDER_CHARS.has(t[0]) &&
@@ -101,39 +100,39 @@ function asciiArtScore(text) {
 
   if (wide / lines.length >= 0.7) {
     score += 0.15;
-    reasons.push("many_wide_lines");
+    reasons.push('many_wide_lines');
   }
   if (mean >= 20 && std / Math.max(1, mean) <= 0.22) {
     score += 0.2;
-    reasons.push("consistent_width");
+    reasons.push('consistent_width');
   }
   if (symD >= 0.18 && alpha <= 0.55) {
     score += 0.2;
-    reasons.push("symbol_heavy_low_alpha");
+    reasons.push('symbol_heavy_low_alpha');
   }
   if (runs >= Math.max(2, Math.floor(lines.length * 0.05))) {
     score += 0.15;
-    reasons.push("long_same_char_runs");
+    reasons.push('long_same_char_runs');
   }
   if (borders / lines.length >= 0.08) {
     score += 0.1;
-    reasons.push("border_like_lines");
+    reasons.push('border_like_lines');
   }
   if (trailing / lines.length >= 0.1) {
     score += 0.07;
-    reasons.push("trailing_spaces");
+    reasons.push('trailing_spaces');
   }
   if (hasAnsi) {
     score += 0.12;
-    reasons.push("ansi_sequences");
+    reasons.push('ansi_sequences');
   }
   if (hasUnicodeArt) {
     score += 0.28;
-    reasons.push("unicode_art_chars");
+    reasons.push('unicode_art_chars');
   }
   if (alpha > 0.75) {
     score -= 0.1;
-    reasons.push("very_text_heavy");
+    reasons.push('very_text_heavy');
   }
 
   score = Math.max(0, Math.min(1, score));
@@ -151,7 +150,7 @@ function asciiArtScore(text) {
  * @returns {Object} Score and reasons for the score
  */
 function markdownScore(text) {
-  const raw = text.replace(/\r\n?/g, "\n");
+  const raw = text.replace(/\r\n?/g, '\n');
   const features = Object.entries(MD);
   const hits = [];
   let score = 0;
@@ -161,33 +160,33 @@ function markdownScore(text) {
       hits.push(name);
 
       if (
-        name === "fenced" ||
-        name === "heading" ||
-        name === "list" ||
-        name === "link" ||
-        name === "tableRow"
+        name === 'fenced' ||
+        name === 'heading' ||
+        name === 'list' ||
+        name === 'link' ||
+        name === 'tableRow'
       ) {
         score += 0.18;
       } else if (
-        name === "image" ||
-        name === "blockquote" ||
-        name === "setext" ||
-        name === "frontMatter"
+        name === 'image' ||
+        name === 'blockquote' ||
+        name === 'setext' ||
+        name === 'frontMatter'
       ) {
         score += 0.12;
       } else if (
-        name === "inlineCode" ||
-        name === "hr" ||
-        name === "emphasis"
+        name === 'inlineCode' ||
+        name === 'hr' ||
+        name === 'emphasis'
       ) {
         score += 0.08;
-      } else if (name === "html") {
+      } else if (name === 'html') {
         score += 0.05;
       }
     }
   }
 
-  const longLines = raw.split("\n").filter((l) => l.length > 140).length;
+  const longLines = raw.split('\n').filter((l) => l.length > 140).length;
   if (longLines >= 2) score -= 0.1;
 
   if (
@@ -238,12 +237,12 @@ function codeLikePenalty(text) {
  * @returns {Object} Detection result with format type, scores, and reasons
  */
 export function detectTextFormat(text) {
-  if (typeof text !== "string" || !text.trim()) {
+  if (typeof text !== 'string' || !text.trim()) {
     return {
-      text_format: "plain",
+      text_format: 'plain',
       asciiArt: 0,
       markdown: 0,
-      reasons: { ascii: ["empty"], markdown: [] },
+      reasons: { ascii: ['empty'], markdown: [] },
     };
   }
 
@@ -257,21 +256,21 @@ export function detectTextFormat(text) {
   const ASCII_TH = 0.35;
   const MD_TH = 0.08;
 
-  let text_format = "plain"; // default
+  let text_format = 'plain'; // default
 
   // Extra quick detections for specific formats (check these first)
   if (/```[\s\S]*?```|~~~[\s\S]*?~~~/m.test(text)) {
-    text_format = "code";
+    text_format = 'code';
   } else if (/^\s*<\?xml/i.test(text)) {
-    text_format = "xml";
+    text_format = 'xml';
   } else if (/^\s*<[^>]+>/.test(text)) {
-    text_format = "html";
-  } else if (/^\s*[\[{][\s\S]*[\]}]\s*$/m.test(text)) {
-    text_format = "json";
+    text_format = 'html';
+  } else if (/^\s*[{[][\s\S]*[\]}]\s*$/m.test(text)) {
+    text_format = 'json';
   } else if (asciiFinal >= ASCII_TH && asciiFinal > mdFinal + 0.1) {
-    text_format = "ascii";
+    text_format = 'ascii';
   } else if (mdFinal >= MD_TH && mdFinal >= asciiFinal) {
-    text_format = "markdown";
+    text_format = 'markdown';
   }
 
   return {

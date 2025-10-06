@@ -289,7 +289,8 @@ def hello():
 
   describe('XML detection', () => {
     it('should detect XML declaration', () => {
-      const text = '<?xml version="1.0" encoding="UTF-8"?><root><item>test</item></root>';
+      const text =
+        '<?xml version="1.0" encoding="UTF-8"?><root><item>test</item></root>';
       const result = detectTextFormat(text);
       expect(result.text_format).to.equal('xml');
     });
