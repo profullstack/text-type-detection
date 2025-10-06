@@ -253,7 +253,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Author
 
-ProFullStack
+Profullstack, Inc. https://profullstack.com
 
 ## Repository
 
