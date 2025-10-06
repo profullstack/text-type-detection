@@ -255,6 +255,19 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 Profullstack, Inc. https://profullstack.com
 
+## Author
+
+Profullstack, Inc. https://profullstack.com
+
 ## Repository
 
 https://github.com/profullstack/text-type-detection
+
+## Credits
+
+This project follows several web standards and specifications:
+
+- [humans.txt](https://humanstxt.org/) - See [humans.txt](humans.txt) for team and site information
+- [robots.txt](https://www.robotstxt.org/) - Standard for web robots
+- [llms.txt](https://llmstxt.org/) - LLM-friendly documentation format
+- [ai.txt](https://ai-txt.org/) - AI agent interaction specification
