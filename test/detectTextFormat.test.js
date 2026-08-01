@@ -305,6 +305,77 @@ def hello():
     });
   });
 
+  describe('YAML detection', () => {
+    it('should detect YAML with document separator', () => {
+      const text = `---
+name: my-app
+version: 1.0.0
+description: A sample app
+`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+      expect(result.reasons.yaml).to.include('doc_separator');
+    });
+
+    it('should detect YAML with key-value pairs', () => {
+      const text = `name: my-app
+version: 1.0.0
+dependencies:
+  express: ^4.0.0
+  lodash: ^4.17.0
+items:
+  - one
+  - two`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+      expect(result.reasons.yaml).to.include('nested_lists');
+    });
+
+    it('should detect YAML with comments', () => {
+      const text = `# Application config
+name: my-app
+version: 1.0.0
+# Dependencies
+debug: true
+`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+      expect(result.reasons.yaml).to.include('has_comments');
+    });
+
+    it('should not detect markdown front matter as YAML', () => {
+      const text = `---
+title: My Post
+date: 2024-01-01
+---
+# Content`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('markdown');
+      expect(result.reasons.markdown).to.include('frontMatter');
+    });
+
+    it('should not detect JSON as YAML', () => {
+      const text = `{
+  "name": "my-app",
+  "version": "1.0.0"
+}`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('json');
+    });
+
+    it('should detect YAML with multiline scalars', () => {
+      const text = `name: my-app
+config:
+  multiline: |
+    This is line 1
+    This is line 2
+    This is line 3
+`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+    });
+  });
+
   describe('edge cases and mixed content', () => {
     it('should prioritize ASCII art over markdown when ASCII score is higher', () => {
       const text = `┌────────────────┐

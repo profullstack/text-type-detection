@@ -203,6 +203,94 @@ function markdownScore(text) {
 }
 
 /**
+ * Calculate YAML score based on YAML-specific patterns
+ * @param {string} text - The text to analyze
+ * @returns {Object} Score and reasons for the score
+ */
+function yamlScore(text) {
+  const raw = text.replace(/\r\n?/g, '\n');
+  const lines = raw.split('\n');
+
+  if (lines.length < 2) {
+    return { score: 0, reasons: ['too_few_lines'] };
+  }
+
+  let score = 0;
+  const reasons = [];
+
+  // YAML document separator at start
+  if (/^---\s*$/m.test(raw)) {
+    score += 0.2;
+    reasons.push('doc_separator');
+  }
+
+  // YAML document end marker
+  if (/^\.\.\.\s*$/m.test(raw)) {
+    score += 0.1;
+    reasons.push('doc_end');
+  }
+
+  // YAML key-value pairs (key: value or key:)
+  const yamlKeyLines = lines.filter((l) => {
+    const trimmed = l.trim();
+    if (!trimmed || trimmed.startsWith('#')) return false;
+    if (/^---\s*$/.test(trimmed) || /^\.\.\.\s*$/.test(trimmed)) return false;
+    return /^\s*[\w-]+:\s*(?:.*)?$/i.test(l);
+  });
+  if (yamlKeyLines.length >= 5) {
+    score += 0.35;
+    reasons.push('key_value_pairs_many');
+  } else if (yamlKeyLines.length >= 3) {
+    score += 0.25;
+    reasons.push('key_value_pairs');
+  } else if (yamlKeyLines.length >= 1) {
+    score += 0.1;
+    reasons.push('has_key_value');
+  }
+
+  // YAML nested lists (indented `- ` items after a key)
+  const nestedListLines = lines.filter(
+    (l) => /^\s{2,}-\s+/.test(l) || /^\s{2,}\*\s+/.test(l)
+  );
+  if (nestedListLines.length >= 2) {
+    score += 0.15;
+    reasons.push('nested_lists');
+  }
+
+  // YAML multiline scalars (| block or > folded at end of line)
+  if (/:\s*[|>][+-]?/.test(raw)) {
+    score += 0.1;
+    reasons.push('multiline_scalar');
+  }
+
+  // YAML comments
+  const commentLines = lines.filter((l) => l.trim().startsWith('#'));
+  const commentRatio = lines.length > 0 ? commentLines.length / lines.length : 0;
+  if (commentRatio >= 0.05 && yamlKeyLines.length >= 2) {
+    score += 0.15;
+    reasons.push('has_comments');
+  }
+
+  // Penalize if looks like JSON
+  if (/^\s*[{[]/.test(raw)) {
+    score -= 0.3;
+    reasons.push('looks_json');
+  }
+
+  // Penalize markdown headings only when few YAML key-value pairs
+  if (yamlKeyLines.length < 2) {
+    if (MD.heading.test(raw) || MD.setext.test(raw)) {
+      score -= 0.2;
+      reasons.push('looks_markdown');
+    }
+  }
+
+  score = Math.max(0, Math.min(1, score));
+
+  return { score, reasons };
+}
+
+/**
  * Calculate penalty for code-like content
  * @param {string} text - The text to analyze
  * @returns {number} Penalty value
@@ -242,19 +330,22 @@ export function detectTextFormat(text) {
       text_format: 'plain',
       asciiArt: 0,
       markdown: 0,
-      reasons: { ascii: ['empty'], markdown: [] },
+      yaml: 0,
+      reasons: { ascii: ['empty'], markdown: [], yaml: [] },
     };
   }
 
   const a = asciiArtScore(text);
   const m = markdownScore(text);
   const codePenalty = codeLikePenalty(text);
+  const y = yamlScore(text);
 
   const asciiFinal = Math.max(0, a.score - codePenalty);
   const mdFinal = m.score;
 
   const ASCII_TH = 0.35;
   const MD_TH = 0.08;
+  const YAML_TH = 0.35;
 
   let text_format = 'plain'; // default
 
@@ -267,6 +358,8 @@ export function detectTextFormat(text) {
     text_format = 'html';
   } else if (/^\s*[{[][\s\S]*[\]}]\s*$/m.test(text)) {
     text_format = 'json';
+  } else if (y.score >= YAML_TH && y.score >= m.score) {
+    text_format = 'yaml';
   } else if (asciiFinal >= ASCII_TH && asciiFinal > mdFinal + 0.1) {
     text_format = 'ascii';
   } else if (mdFinal >= MD_TH && mdFinal >= asciiFinal) {
@@ -277,9 +370,11 @@ export function detectTextFormat(text) {
     text_format,
     asciiArt: Number(asciiFinal.toFixed(3)),
     markdown: Number(mdFinal.toFixed(3)),
+    yaml: Number(y.score.toFixed(3)),
     reasons: {
       ascii: a.reasons,
       markdown: m.reasons,
+      yaml: y.reasons,
       codePenaltyApplied: codePenalty > 0,
     },
     stats: a.stats,
