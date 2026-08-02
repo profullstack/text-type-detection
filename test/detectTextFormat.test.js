@@ -305,6 +305,77 @@ def hello():
     });
   });
 
+  describe('YAML detection', () => {
+    it('should detect YAML with document separator', () => {
+      const text = `---
+name: my-app
+version: 1.0.0
+description: A sample app
+`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+      expect(result.reasons.yaml).to.include('doc_separator');
+    });
+
+    it('should detect YAML with key-value pairs', () => {
+      const text = `name: my-app
+version: 1.0.0
+dependencies:
+  express: ^4.0.0
+  lodash: ^4.17.0
+items:
+  - one
+  - two`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+      expect(result.reasons.yaml).to.include('nested_lists');
+    });
+
+    it('should detect YAML with comments', () => {
+      const text = `# Application config
+name: my-app
+version: 1.0.0
+# Dependencies
+debug: true
+`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+      expect(result.reasons.yaml).to.include('has_comments');
+    });
+
+    it('should not detect markdown front matter as YAML', () => {
+      const text = `---
+title: My Post
+date: 2024-01-01
+---
+# Content`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('markdown');
+      expect(result.reasons.markdown).to.include('frontMatter');
+    });
+
+    it('should not detect JSON as YAML', () => {
+      const text = `{
+  "name": "my-app",
+  "version": "1.0.0"
+}`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('json');
+    });
+
+    it('should detect YAML with multiline scalars', () => {
+      const text = `name: my-app
+config:
+  multiline: |
+    This is line 1
+    This is line 2
+    This is line 3
+`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('yaml');
+    });
+  });
+
   describe('edge cases and mixed content', () => {
     it('should prioritize ASCII art over markdown when ASCII score is higher', () => {
       const text = `┌────────────────┐
@@ -355,6 +426,77 @@ More content`;
       expect(result.asciiArt).to.be.at.most(1);
       expect(result.markdown).to.be.at.least(0);
       expect(result.markdown).to.be.at.most(1);
+    });
+  });
+
+  describe('SVG detection', () => {
+    it('should detect SVG with XML declaration', () => {
+      const text = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <circle cx="50" cy="50" r="40" />
+</svg>`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('svg');
+    });
+
+    it('should detect bare SVG tag', () => {
+      const text = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <rect width="100" height="100" />
+</svg>`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('svg');
+    });
+
+    it('should detect SVG with DOCTYPE', () => {
+      const text = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="40"/>
+</svg>`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('svg');
+    });
+  });
+
+  describe('CSV detection', () => {
+    it('should detect simple CSV with header', () => {
+      const text = `name,age,city
+John,30,New York
+Jane,25,Boston
+Bob,35,Chicago`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('csv');
+    });
+
+    it('should detect CSV with many columns', () => {
+      const text = `id,name,email,age,country
+1,John,john@test.com,30,USA
+2,Jane,jane@test.com,25,UK
+3,Bob,bob@test.com,35,USA`;
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('csv');
+    });
+  });
+
+  describe('binary format detection', () => {
+    it('should detect PDF by magic bytes', () => {
+      const text = '%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n';
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('pdf');
+      expect(result.binary_format).to.equal('pdf');
+    });
+
+    it('should detect JPEG by magic bytes', () => {
+      const text = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00';
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('jpeg');
+      expect(result.binary_format).to.equal('jpeg');
+    });
+
+    it('should detect PNG by magic bytes', () => {
+      const text = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01';
+      const result = detectTextFormat(text);
+      expect(result.text_format).to.equal('png');
+      expect(result.binary_format).to.equal('png');
     });
   });
 
